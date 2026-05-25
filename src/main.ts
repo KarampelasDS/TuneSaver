@@ -30,7 +30,7 @@ const generatePKCE = () => {
 
 ipcMain.on("start-auth", () => {
   const challenge = generatePKCE();
-  const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=tunesaver://callback&scope=user-read-private%20user-read-email%20playlist-read-private&code_challenge_method=S256&code_challenge=${challenge}`;
+  const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=tunesaver://callback&scope=user-read-private%20user-read-email%20playlist-read-private%20playlist-read-collaborative&code_challenge_method=S256&code_challenge=${challenge}`;
   shell.openExternal(authUrl);
 });
 
