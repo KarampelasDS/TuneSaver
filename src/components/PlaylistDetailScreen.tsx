@@ -8,7 +8,6 @@ type PlaylistDetailScreenProps = {
   selectedTrackIds: string[];
   isSelected: boolean;
   isLoading: boolean;
-  getTrackSelectionId: (track: SpotifyTrack, index: number) => string;
   onToggleTrack: (track: SpotifyTrack, index: number) => void;
   onRemoveFromSelection: (playlist: SpotifyPlaylist) => void;
 };
@@ -21,6 +20,12 @@ function formatDuration(durationMs: number) {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+const getTrackSelectionId = (
+  track: SpotifyTrack,
+  index: number,
+  playlistId: string,
+) => track.id ?? track.uri ?? `${playlistId}-${track.name}-${index}`;
+
 export function PlaylistDetailScreen({
   playlist,
   tracks,
@@ -28,12 +33,11 @@ export function PlaylistDetailScreen({
   selectedTrackIds,
   isSelected,
   isLoading,
-  getTrackSelectionId,
   onToggleTrack,
   onRemoveFromSelection,
 }: PlaylistDetailScreenProps) {
   const selectedTracksInPlaylist = (tracks ?? []).filter((track, index) =>
-    selectedTrackIds.includes(getTrackSelectionId(track, index)),
+    selectedTrackIds.includes(getTrackSelectionId(track, index, playlist.id)),
   ).length;
 
   return (
@@ -62,7 +66,11 @@ export function PlaylistDetailScreen({
         <div className="track-list">
           {(tracks ?? []).map((track, index) => {
             const imageUrl = track.album?.images?.[0]?.url;
-            const trackSelectionId = getTrackSelectionId(track, index);
+            const trackSelectionId = getTrackSelectionId(
+              track,
+              index,
+              playlist.id,
+            );
             const isTrackSelected = selectedTrackIds.includes(trackSelectionId);
 
             return (

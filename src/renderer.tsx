@@ -33,9 +33,37 @@ const allPlaylistsUrl = "https://api.spotify.com/v1/me/playlists";
 
 type AppView = "music" | "settings" | "playlist";
 
+const filterReadablePlaylists = (
+  playlists: SpotifyPlaylist[],
+  userId: string,
+) =>
+  playlists.filter(
+    (playlist) => playlist.owner?.id === userId || playlist.collaborative,
+  );
+
+const fetchAllPlaylists = async (accessToken: string) => {
+  const playlists: SpotifyPlaylist[] = [];
+  let nextUrl: string | null = allPlaylistsUrl;
+
+  while (nextUrl) {
+    const response = await fetch(nextUrl, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    const data: PlaylistsResponse = await response.json();
+
+    playlists.push(...(data.items ?? []));
+    nextUrl = data.next ?? null;
+  }
+
+  return playlists;
+};
+
 function App() {
   const [token, setToken] = useState<string | null>(
-    import.meta.env.VITE_TEMP_TOKEN,
+    //import.meta.env.VITE_TEMP_TOKEN,
+    null,
   );
   const [loggedIn, setLoggedIn] = useState<boolean>(false);
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -57,33 +85,6 @@ function App() {
   const [isLoadingPlaylistTracks, setIsLoadingPlaylistTracks] = useState(false);
   const [isShowingAllPlaylists, setIsShowingAllPlaylists] = useState(false);
   const [isLoadingAllPlaylists, setIsLoadingAllPlaylists] = useState(false);
-
-  const filterReadablePlaylists = (
-    playlists: SpotifyPlaylist[],
-    userId: string,
-  ) =>
-    playlists.filter(
-      (playlist) => playlist.owner?.id === userId || playlist.collaborative,
-    );
-
-  const fetchAllPlaylists = async (accessToken: string) => {
-    const playlists: SpotifyPlaylist[] = [];
-    let nextUrl: string | null = allPlaylistsUrl;
-
-    while (nextUrl) {
-      const response = await fetch(nextUrl, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-      const data: PlaylistsResponse = await response.json();
-
-      playlists.push(...(data.items ?? []));
-      nextUrl = data.next ?? null;
-    }
-
-    return playlists;
-  };
 
   useEffect(() => {
     window.electron.onAuthSuccess((token) => {
@@ -161,11 +162,11 @@ function App() {
     );
   };
 
-  const getTrackSelectionId = (track: SpotifyTrack, index: number) =>
-    track.id ?? track.uri ?? `${activePlaylist?.id ?? "playlist"}-${track.name}-${index}`;
-
   const toggleTrackSelection = (track: SpotifyTrack, index: number) => {
-    const trackId = getTrackSelectionId(track, index);
+    const trackId =
+      track.id ??
+      track.uri ??
+      `${activePlaylist?.id ?? "playlist"}-${track.name}-${index}`;
 
     setSelectedTracks((currentTracks) => {
       if (
@@ -241,19 +242,7 @@ function App() {
   };
 
   const logout = () => {
-    setToken(null);
-    setLoggedIn(false);
-    setUserData(null);
-    setCurrentUserId(null);
-    setCurrentView("music");
-    setSelectedPlaylists([]);
-    setSelectedTracks([]);
-    setActivePlaylist(null);
-    setActivePlaylistTracks(null);
-    setPlaylistTrackError(null);
-    setIsShowingAllPlaylists(false);
-    setIsLoadingAllPlaylists(false);
-    setIsLoadingPlaylistTracks(false);
+    window.location.reload();
   };
 
   const goBack = () => {
@@ -282,7 +271,6 @@ function App() {
             (playlist) => playlist.id === activePlaylist.id,
           )}
           isLoading={isLoadingPlaylistTracks}
-          getTrackSelectionId={getTrackSelectionId}
           onToggleTrack={toggleTrackSelection}
           onRemoveFromSelection={removePlaylistSelection}
         />
