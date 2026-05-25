@@ -17,6 +17,8 @@ if (started) {
 let codeVerifier: string | null = null;
 const clientId = process.env.VITE_SPOTIFY_CLIENT_ID;
 
+let accessToken: string | null = null;
+
 const generatePKCE = () => {
   codeVerifier = crypto.randomBytes(32).toString("base64url");
   const challenge = crypto
@@ -28,7 +30,7 @@ const generatePKCE = () => {
 
 ipcMain.on("start-auth", () => {
   const challenge = generatePKCE();
-  const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=tunesaver://callback&scope=user-read-private%20user-read-email&code_challenge_method=S256&code_challenge=${challenge}`;
+  const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=tunesaver://callback&scope=user-read-private%20user-read-email%20playlist-read-private&code_challenge_method=S256&code_challenge=${challenge}`;
   shell.openExternal(authUrl);
 });
 
@@ -49,6 +51,11 @@ const exchangeCodeForToken = async (code: string) => {
     .then((res) => res.json())
     .then((data) => {
       console.log("Access Token:", data.access_token);
+      accessToken = data.access_token;
+      BrowserWindow.getAllWindows()[0].webContents.send(
+        "auth-success",
+        data.access_token,
+      );
     })
     .catch((err) => {
       console.error("Error exchanging code for token:", err);
