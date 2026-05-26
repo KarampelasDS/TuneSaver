@@ -255,6 +255,7 @@ const createWindow = () => {
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
     },
+    autoHideMenuBar: true,
   });
 
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {

@@ -637,12 +637,12 @@ button {
   align-items: center;
   gap: 8px;
   margin-bottom: 16px;
-  color: #6e6e73;
+  color: #10b8d6;
 }
 
 .settings-section-title {
   margin: 0;
-  color: #6e6e73;
+  color: #10b8d6;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -1476,4 +1476,178 @@ button {
 
 .download-all-btn:hover {
   background: #18c7e4;
+}
+
+/* ─── No-path modal ─────────────────────────────────────────────────────────── */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(3px);
+}
+
+.modal-card {
+  background: #1a1a1d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 36px 32px 28px;
+  width: 420px;
+  max-width: calc(100vw - 48px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.modal-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: rgba(18, 184, 212, 0.12);
+  color: #12b8d4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #f7f7f7;
+  text-align: center;
+}
+
+.modal-body {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.55);
+  text-align: center;
+}
+
+.modal-body strong {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  width: 100%;
+}
+
+.modal-primary-btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 8px;
+  background: #12b8d4;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: background 0.15s;
+}
+
+.modal-primary-btn:hover {
+  background: #18c7e4;
+}
+
+.modal-secondary-btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.modal-secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ─── Low-match threshold tip ───────────────────────────────────────────────── */
+
+.match-threshold-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 24px 4px;
+  padding: 12px 14px;
+  background: rgba(18, 184, 212, 0.07);
+  border: 1px solid rgba(18, 184, 212, 0.22);
+  border-radius: 10px;
+}
+
+.tip-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #12b8d4;
+}
+
+.tip-text {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tip-text strong {
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 600;
+}
+
+.tip-settings-link {
+  display: inline;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #12b8d4;
+  font: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tip-settings-link:hover {
+  color: #18c7e4;
+}
+
+.tip-dismiss {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  border-radius: 4px;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.tip-dismiss:hover {
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.07);
 }

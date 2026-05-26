@@ -8,6 +8,8 @@ import {
   ChevronUp,
   AlertCircle,
   ExternalLink,
+  Settings,
+  X,
 } from "lucide-react";
 import type { BeatSaverMap, MatchPhase, SpotifyTrack, TrackMatch } from "../types";
 
@@ -20,6 +22,7 @@ type MatchResultsScreenProps = {
   onSelectAlternative: (selectionId: string, index: number) => void;
   onDownloadAll: () => void;
   onStartNew: () => void;
+  onOpenSettings: () => void;
 };
 
 function formatDuration(ms: number) {
@@ -268,6 +271,7 @@ export function MatchResultsScreen({
   onSelectAlternative,
   onDownloadAll,
   onStartNew,
+  onOpenSettings,
 }: MatchResultsScreenProps) {
   if (phase.type === "collecting" || phase.type === "searching") {
     return (
@@ -286,6 +290,14 @@ export function MatchResultsScreen({
       </main>
     );
   }
+
+  const [tipDismissed, setTipDismissed] = useState(false);
+
+  const unmatched = trackMatches.filter(
+    (tm) => !tm.searching && (!tm.results.length || (!tm.manuallySelected && tm.matchScore < matchThreshold)),
+  );
+  const showThresholdTip =
+    phase.type === "results" && !tipDismissed && unmatched.length >= 5;
 
   const matched = trackMatches.filter(
     (tm) =>
@@ -326,6 +338,32 @@ export function MatchResultsScreen({
           </button>
         )}
       </div>
+
+      {showThresholdTip && (
+        <div className="match-threshold-tip" role="status">
+          <Settings size={15} className="tip-icon" aria-hidden="true" />
+          <p className="tip-text">
+            <strong>{unmatched.length} songs</strong> had no match. Try lowering the{" "}
+            <strong>Match Confidence Threshold</strong> in{" "}
+            <button
+              className="tip-settings-link"
+              type="button"
+              onClick={onOpenSettings}
+            >
+              Settings
+            </button>{" "}
+            to catch more songs.
+          </p>
+          <button
+            className="tip-dismiss"
+            type="button"
+            aria-label="Dismiss tip"
+            onClick={() => setTipDismissed(true)}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       <div className="match-results-list">
         {trackMatches.map((tm) => (
