@@ -10,7 +10,10 @@ import { FuseV1Options, FuseVersion } from "@electron/fuses";
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    extraResource: [".env"],
+    name: "TuneSaver",
+    executableName: "TuneSaver",
+    icon: "assets/icon.ico",
+    extraResource: [".env", "assets/icon.ico"],
   },
   rebuildConfig: {},
   makers: [

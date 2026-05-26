@@ -7,6 +7,7 @@ type SelectedPlaylistsProps = {
   tracks: SelectedTrack[];
   onRemove: (playlist: SpotifyPlaylist) => void;
   onRemoveTrack: (selectionId: string) => void;
+  onFindMaps: () => void;
 };
 
 export function SelectedPlaylists({
@@ -14,9 +15,10 @@ export function SelectedPlaylists({
   tracks,
   onRemove,
   onRemoveTrack,
+  onFindMaps,
 }: SelectedPlaylistsProps) {
   const totalTracks = playlists.reduce(
-    (total, playlist) => total + (playlist.items?.total ?? 0),
+    (total, playlist) => total + (playlist.tracks?.total ?? 0),
     0,
   );
 
@@ -30,7 +32,12 @@ export function SelectedPlaylists({
             playlists
           </p>
         </div>
-        <button className="find-maps-button" type="button">
+        <button
+          className="find-maps-button"
+          type="button"
+          disabled={playlists.length === 0 && tracks.length === 0}
+          onClick={onFindMaps}
+        >
           Find Beat Saber Maps
         </button>
       </div>
@@ -46,7 +53,7 @@ export function SelectedPlaylists({
                   <span className="playlist-copy">
                     <span className="playlist-name">{playlist.name}</span>
                     <span className="playlist-count">
-                      {playlist.items?.total ?? 0} tracks
+                      {playlist.tracks?.total ?? 0} tracks
                     </span>
                   </span>
                   <button

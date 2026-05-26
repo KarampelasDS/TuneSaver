@@ -1,15 +1,19 @@
-import { app, BrowserWindow, shell, ipcMain } from "electron";
+import { app, BrowserWindow, shell, ipcMain, dialog } from "electron";
 import path from "node:path";
+import fs from "node:fs";
+import https from "node:https";
+import http from "node:http";
 import crypto from "node:crypto";
 import started from "electron-squirrel-startup";
 import dotenv from "dotenv";
+import AdmZip from "adm-zip";
+
 const envPath = app.isPackaged
   ? path.join(process.resourcesPath, ".env")
   : path.join(__dirname, "../../.env");
 
 dotenv.config({ path: envPath });
 
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
@@ -67,17 +71,192 @@ const handleCallback = (url: string) => {
   if (code) exchangeCodeForToken(code);
 };
 
+ipcMain.on("open-external", (_event, url: string) => {
+  shell.openExternal(url);
+});
+
+ipcMain.handle("select-directory", async () => {
+  const result = await dialog.showOpenDialog({ properties: ["openDirectory"] });
+  return result.canceled ? null : result.filePaths[0];
+});
+
+ipcMain.handle(
+  "scan-custom-levels",
+  async (_event, customLevelsPath: string) => {
+    try {
+      const entries = fs.readdirSync(customLevelsPath, { withFileTypes: true });
+      return entries
+        .filter((e) => e.isDirectory())
+        .map((e) => {
+          const match = e.name.match(/^([0-9a-f]+)\s/i);
+          return match ? match[1].toLowerCase() : null;
+        })
+        .filter(Boolean) as string[];
+    } catch {
+      return [];
+    }
+  },
+);
+
+function downloadFile(
+  url: string,
+  dest: string,
+  onProgress: (p: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const attempt = (u: string) => {
+      const protocol = u.startsWith("https") ? https : http;
+      protocol
+        .get(u, (res) => {
+          if (res.statusCode === 301 || res.statusCode === 302) {
+            res.resume(); // drain so the socket is released
+            const location = res.headers.location;
+            if (!location) {
+              reject(new Error("Redirect with no location"));
+              return;
+            }
+            attempt(location);
+            return;
+          }
+          if (res.statusCode !== 200) {
+            reject(new Error(`HTTP ${res.statusCode}`));
+            return;
+          }
+          const total = parseInt(res.headers["content-length"] ?? "0", 10);
+          let received = 0;
+          const file = fs.createWriteStream(dest);
+          res.on("data", (chunk: Buffer) => {
+            received += chunk.length;
+            if (total > 0) onProgress(Math.round((received / total) * 100));
+          });
+          res.pipe(file);
+          file.on("finish", () => {
+            file.close();
+            resolve();
+          });
+          file.on("error", reject);
+          res.on("error", reject);
+        })
+        .on("error", reject);
+    };
+    attempt(url);
+  });
+}
+
+ipcMain.handle(
+  "download-map",
+  async (
+    _event,
+    args: {
+      selectionId: string;
+      mapId: string;
+      downloadURL: string;
+      songName: string;
+      artistName: string;
+      beatSaberPath: string;
+    },
+  ) => {
+    const {
+      selectionId,
+      mapId,
+      downloadURL,
+      songName,
+      artistName,
+      beatSaberPath,
+    } = args;
+    const customLevelsPath = path.join(
+      beatSaberPath,
+      "Beat Saber_Data",
+      "CustomLevels",
+    );
+    const safe = (s: string) => s.replace(/[<>:"/\\|?*\x00-\x1f]/g, "");
+    const destDir = path.join(
+      customLevelsPath,
+      `${mapId} (${safe(songName)} - ${safe(artistName)})`,
+    );
+    const tmpFile = path.join(
+      app.getPath("temp"),
+      `tunesaver_${mapId}_${Date.now()}.zip`,
+    );
+
+    try {
+      fs.mkdirSync(customLevelsPath, { recursive: true });
+
+      await downloadFile(downloadURL, tmpFile, (progress) => {
+        BrowserWindow.getAllWindows()[0]?.webContents.send(
+          "download-progress",
+          {
+            selectionId,
+            progress,
+          },
+        );
+      });
+
+      const zip = new AdmZip(tmpFile);
+      zip.extractAllTo(destDir, true);
+      try {
+        fs.unlinkSync(tmpFile);
+      } catch {}
+
+      return { success: true };
+    } catch (error) {
+      try {
+        fs.unlinkSync(tmpFile);
+      } catch {}
+      return { success: false, error: String(error) };
+    }
+  },
+);
+
+ipcMain.handle(
+  "create-bplist",
+  async (
+    _event,
+    args: {
+      title: string;
+      imageBase64: string;
+      songs: { hash: string; songName: string }[];
+      beatSaberPath: string;
+    },
+  ) => {
+    const { title, imageBase64, songs, beatSaberPath } = args;
+    const playlistsDir = path.join(beatSaberPath, "Playlists");
+    try {
+      fs.mkdirSync(playlistsDir, { recursive: true });
+      const safe = (s: string) => s.replace(/[<>:"/\\|?*\x00-\x1f]/g, "");
+      const filename = `TuneSaver - ${safe(title)}.bplist`;
+      const dest = path.join(playlistsDir, filename);
+      const content: Record<string, unknown> = {
+        playlistTitle: title,
+        playlistAuthor: "TuneSaver",
+        songs,
+      };
+      if (imageBase64) content.image = imageBase64;
+      fs.writeFileSync(dest, JSON.stringify(content, null, 2), "utf-8");
+      console.log(`[create-bplist] wrote ${dest} with ${songs.length} songs`);
+      return { success: true };
+    } catch (error) {
+      console.error("[create-bplist] failed:", error);
+      return { success: false, error: String(error) };
+    }
+  },
+);
+
 const createWindow = () => {
-  // Create the browser window.
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, "assets", "icon.png")
+    : path.join(__dirname, "../../assets/icon.png");
+
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 900,
+    title: "TuneSaver",
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
     },
   });
 
-  // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
@@ -85,17 +264,12 @@ const createWindow = () => {
       path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
     );
   }
-
-  // Open the DevTools.
-  //mainWindow.webContents.openDevTools();
 };
 
-// Mac/Linux
 app.on("open-url", (event, url) => {
   handleCallback(url);
 });
 
-// Windows
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
@@ -106,15 +280,9 @@ if (!gotTheLock) {
   });
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
 app.setAsDefaultProtocolClient("tunesaver");
 app.on("ready", createWindow);
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
@@ -122,12 +290,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("activate", () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.

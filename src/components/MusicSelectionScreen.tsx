@@ -14,6 +14,7 @@ type MusicSelectionScreenProps = {
   onRemovePlaylist: (playlist: SpotifyPlaylist) => void;
   onRemoveTrack: (selectionId: string) => void;
   onShowAllPlaylists: () => void;
+  onFindMaps: () => void;
 };
 
 export function MusicSelectionScreen({
@@ -27,6 +28,7 @@ export function MusicSelectionScreen({
   onRemovePlaylist,
   onRemoveTrack,
   onShowAllPlaylists,
+  onFindMaps,
 }: MusicSelectionScreenProps) {
   return (
     <main className="music-screen">
@@ -59,6 +61,7 @@ export function MusicSelectionScreen({
         tracks={selectedTracks}
         onRemove={onRemovePlaylist}
         onRemoveTrack={onRemoveTrack}
+        onFindMaps={onFindMaps}
       />
     </main>
   );
