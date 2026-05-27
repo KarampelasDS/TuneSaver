@@ -111,12 +111,54 @@ function stringSimilarity(a: string, b: string): number {
   return 1 - dp[m][n] / Math.max(m, n);
 }
 
+// Strip parentheticals and common feature tags from a track/map title so they
+// don't pollute search queries or drag down match scores.
+// e.g. "This Fffire (New Version)" → "This Fffire"
+//      "Can't Stop (feat. Guest)" → "Can't Stop"
+//      "Song ft. Someone"         → "Song"
+function stripParentheticals(s: string): string {
+  return s
+    .replace(/\s*[\(\[][^\)\]]*[\)\]]/g, "") // remove (...) and [...]
+    .replace(/\s*[-–—]?\s*\b(feat|ft)\.?\s.+$/i, "") // remove feat./ft. suffix
+    .trim();
+}
+
+// Best title similarity between a Spotify track name and a BeatSaver map title.
+// Handles two common patterns:
+//   BeatSaver convention  "Artist - Song"       → scores against just "Song"
+//   Spotify convention    "Song - New Version"  → scores aCore (pre-dash) too
+function titleSimilarity(spotifyTitle: string, bsTitle: string): number {
+  const a = stripParentheticals(spotifyTitle);
+  // Strip Spotify-style " - Version Suffix" (e.g. "Song - Live Version" → "Song")
+  const aCore = a.replace(/\s+[-–—]\s+.+$/, "").trim() || a;
+  const b = stripParentheticals(bsTitle);
+
+  let best = Math.max(
+    stringSimilarity(a,     bsTitle), // cleaned spotify vs raw BS
+    stringSimilarity(a,     b),       // both cleaned
+    stringSimilarity(aCore, b),       // core spotify title vs cleaned BS
+  );
+
+  // Many BeatSaver maps use "Artist - Song" as the title — try just the parts
+  const dashIdx = b.indexOf(" - ");
+  if (dashIdx !== -1) {
+    best = Math.max(
+      best,
+      stringSimilarity(a,     b.slice(dashIdx + 3)), // after " - "
+      stringSimilarity(a,     b.slice(0, dashIdx)),   // before " - "
+      stringSimilarity(aCore, b.slice(dashIdx + 3)), // core vs after " - "
+    );
+  }
+
+  return best;
+}
+
 function calculateMatchScore(
   track: SpotifyTrack,
   map: BeatSaverMap,
   preferredDifficulty: string,
 ): number {
-  const nameScore = stringSimilarity(track.name ?? "", map.metadata.songName);
+  const nameScore = titleSimilarity(track.name ?? "", map.metadata.songName);
   const artistScore = stringSimilarity(
     track.artists?.map((a) => a.name).join(" ") ?? "",
     map.metadata.songAuthorName,
@@ -200,17 +242,72 @@ async function fetchPlaylistTracksAll(
 // ─── BeatSaver search ─────────────────────────────────────────────────────────
 
 async function searchBeatSaver(track: SpotifyTrack): Promise<BeatSaverMap[]> {
-  try {
-    const q = encodeURIComponent(
-      `${track.name ?? ""} ${track.artists?.[0]?.name ?? ""}`.trim(),
+  const rawName   = track.name ?? "";
+  const cleanName = stripParentheticals(rawName);
+  // Strip Spotify-style " - Version Suffix" (e.g. "This Fffire - New Version" → "This Fffire").
+  // Used for search queries and as the reference title for relevance sorting.
+  const coreName  = cleanName.replace(/\s+[-–—]\s+.+$/, "").trim() || cleanName;
+  const artist    = track.artists?.[0]?.name ?? "";
+
+  // Fire one BeatSaver text query and return the docs.
+  const bsSearch = async (q: string): Promise<BeatSaverMap[]> => {
+    try {
+      const res = await fetch(
+        `https://api.beatsaver.com/search/text/0?q=${encodeURIComponent(q)}`,
+      );
+      if (!res.ok) return [];
+      const data: BeatSaverSearchResponse = await res.json();
+      return data.docs ?? [];
+    } catch {
+      return [];
+    }
+  };
+
+  // Merge incoming results into the pool, deduplicating by map id.
+  const merge = (pool: BeatSaverMap[], incoming: BeatSaverMap[]) => {
+    const seen = new Set(pool.map((m) => m.id));
+    for (const m of incoming) if (!seen.has(m.id)) pool.push(m);
+    return pool;
+  };
+
+  // Re-sort the entire pool so the closest title match is always first,
+  // regardless of which query fetched it.
+  const sortByRelevance = (pool: BeatSaverMap[]) =>
+    [...pool].sort(
+      (a, b) =>
+        titleSimilarity(coreName, b.metadata.songName) -
+        titleSimilarity(coreName, a.metadata.songName),
     );
-    const res = await fetch(`https://api.beatsaver.com/search/text/0?q=${q}`);
-    if (!res.ok) return [];
-    const data: BeatSaverSearchResponse = await res.json();
-    return (data.docs ?? []).slice(0, 5);
-  } catch {
-    return [];
+
+  // High-confidence early exit: we found at least one map that closely matches
+  // the track title. Threshold is 0.85 — tight enough to avoid false positives
+  // like "Can't Stop Won't Stop" (≈ 0.75) stopping the search prematurely.
+  const hasStrongMatch = (pool: BeatSaverMap[]) =>
+    pool.some((m) => titleSimilarity(coreName, m.metadata.songName) >= 0.85);
+
+  // ── Step 1: raw title + artist (exactly as Spotify gives it) ──────────────
+  let pool = await bsSearch(`${rawName} ${artist}`.trim());
+  if (hasStrongMatch(pool)) return sortByRelevance(pool).slice(0, 5);
+
+  // ── Step 2: parens/feat stripped title + artist ────────────────────────────
+  const cleanQuery = `${cleanName} ${artist}`.trim();
+  if (cleanQuery !== `${rawName} ${artist}`.trim()) {
+    pool = merge(pool, await bsSearch(cleanQuery));
+    if (hasStrongMatch(pool)) return sortByRelevance(pool).slice(0, 5);
   }
+
+  // ── Step 3: core title + artist (also strips "Song - Version Suffix") ──────
+  const coreQuery = `${coreName} ${artist}`.trim();
+  if (coreQuery !== cleanQuery) {
+    pool = merge(pool, await bsSearch(coreQuery));
+    if (hasStrongMatch(pool)) return sortByRelevance(pool).slice(0, 5);
+  }
+
+  // ── Step 4: core title only (no artist — maximises recall when the artist
+  //    name is confusing BeatSaver's search or the map is filed differently)
+  pool = merge(pool, await bsSearch(coreName));
+
+  return sortByRelevance(pool).slice(0, 5);
 }
 
 async function runInBatches<T, R>(

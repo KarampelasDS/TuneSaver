@@ -1498,6 +1498,47 @@ button {
   background: #18c7e4;
 }
 
+/* Bottom completion bar */
+.match-completion-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 40px 18px;
+  background: linear-gradient(to top, #0f0f10 55%, transparent);
+}
+
+.completion-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.completion-check {
+  color: #22c55e;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.5));
+}
+
+.completion-text {
+  font-size: 0.95rem;
+  color: #d4d4d8;
+  line-height: 1.4;
+}
+
+.completion-text strong {
+  color: #f7f7f7;
+}
+
+.completion-failed {
+  color: #f87171;
+}
+
 /* ─── No-path modal ─────────────────────────────────────────────────────────── */
 
 .modal-backdrop {

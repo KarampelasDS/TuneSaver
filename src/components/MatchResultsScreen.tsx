@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Loader2,
   Download,
@@ -293,6 +293,14 @@ export function MatchResultsScreen({
 
   const [tipDismissed, setTipDismissed] = useState(false);
 
+  // Scroll to the bottom of the page when downloads finish so the user can see
+  // the completion bar and the final state of each card.
+  useEffect(() => {
+    if (phase.type === "complete") {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    }
+  }, [phase.type]);
+
   const unmatched = trackMatches.filter(
     (tm) => !tm.searching && (!tm.results.length || (!tm.manuallySelected && tm.matchScore < matchThreshold)),
   );
@@ -332,11 +340,6 @@ export function MatchResultsScreen({
           <h1>{headingTitle}</h1>
           <p>{headingSub}</p>
         </div>
-        {phase.type === "complete" && (
-          <button className="start-new-btn" type="button" onClick={onStartNew}>
-            Start New
-          </button>
-        )}
       </div>
 
       {showThresholdTip && (
@@ -392,6 +395,42 @@ export function MatchResultsScreen({
           >
             <Download size={16} />
             Download {approved.length} Map{approved.length !== 1 ? "s" : ""}
+          </button>
+        </div>
+      )}
+
+      {phase.type === "complete" && (
+        <div className="match-completion-bar">
+          <div className="completion-summary">
+            <CheckCircle2 size={20} className="completion-check" />
+            <span className="completion-text">
+              {phase.succeeded === 0 ? (
+                "No maps were downloaded."
+              ) : (
+                <>
+                  <strong>
+                    {phase.succeeded} map{phase.succeeded !== 1 ? "s" : ""}
+                  </strong>{" "}
+                  downloaded successfully
+                  {phase.failed > 0 && (
+                    <span className="completion-failed">
+                      {" "}• {phase.failed} failed
+                    </span>
+                  )}
+                  {phase.playlistsCreated > 0 && (
+                    <>
+                      {" "}•{" "}
+                      <strong>{phase.playlistsCreated}</strong> Beat Saber{" "}
+                      {phase.playlistsCreated === 1 ? "playlist" : "playlists"}{" "}
+                      created
+                    </>
+                  )}
+                </>
+              )}
+            </span>
+          </div>
+          <button className="start-new-btn" type="button" onClick={onStartNew}>
+            Start New
           </button>
         </div>
       )}
