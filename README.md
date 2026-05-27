@@ -58,7 +58,7 @@ If you've downloaded a pre-built release, you don't need Node.js or any build to
 
 ### Step 1 — Create a Spotify App
 
-TuneSaver connects to Spotify through your own developer app. Spotify's development mode limits an app to **25 whitelisted users**, so this app cannot be publicly distributed — everyone who wants to use it must create their own app or be added to someone else's allowlist.
+TuneSaver connects to Spotify through your own developer app. Spotify's development mode limits an app to **5 whitelisted users**, so this app cannot be publicly distributed — everyone who wants to use it must create their own app or be added to someone else's allowlist.
 
 1. Go to [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) and log in.
 2. Click **Create app**.
@@ -79,7 +79,7 @@ Because the app is in development mode, Spotify only allows explicitly whitelist
 
 1. In your app's dashboard, go to **Settings → User Management**.
 2. Add the Spotify email address for every account that will use TuneSaver — **starting with your own**.
-3. Up to 25 users can be added. Anyone not on the list will get an authentication error when logging in.
+3. Up to 5 users can be added. Anyone not on the list will get an authentication error when logging in.
 
 ---
 
