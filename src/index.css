@@ -20,6 +20,28 @@
 
 * {
   box-sizing: border-box;
+  /* Standard (Chromium 121+, Firefox) */
+  scrollbar-color: #10b8d6 transparent;
+  scrollbar-width: thin;
+}
+
+/* Chromium / Electron — fine-grained thumb styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #10b8d6;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #18c7e4;
 }
 
 html,
@@ -281,8 +303,6 @@ button {
   padding: 16px;
   background: #151516;
   border-right: 1px solid #303033;
-  scrollbar-color: #10b8d6 transparent;
-  scrollbar-width: thin;
 }
 
 .sidebar-heading {

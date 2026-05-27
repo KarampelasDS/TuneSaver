@@ -6,6 +6,8 @@ import { MakerRpm } from "@electron-forge/maker-rpm";
 import { VitePlugin } from "@electron-forge/plugin-vite";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
+import fs from "node:fs";
+import nodePath from "node:path";
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -13,9 +15,23 @@ const config: ForgeConfig = {
     name: "TuneSaver",
     executableName: "TuneSaver",
     icon: "assets/icon.ico",
-    extraResource: [".env", "assets/icon.ico"],
+    extraResource: ["assets/icon.ico"],
   },
   rebuildConfig: {},
+  hooks: {
+    // Copy config.json into the packaged app root (next to the .exe) so users
+    // can edit it directly after extracting the release ZIP — no rebuild needed.
+    postPackage: async (_forgeConfig, options) => {
+      const { outputPaths } = options as { outputPaths: string[] };
+      for (const outputPath of outputPaths) {
+        fs.copyFileSync(
+          nodePath.resolve("config.json"),
+          nodePath.join(outputPath, "config.json"),
+        );
+        console.log(`[TuneSaver] config.json → ${outputPath}`);
+      }
+    },
+  },
   makers: [
     new MakerSquirrel({}),
     new MakerZIP({}, ["darwin"]),

@@ -5,21 +5,31 @@ import https from "node:https";
 import http from "node:http";
 import crypto from "node:crypto";
 import started from "electron-squirrel-startup";
-import dotenv from "dotenv";
 import AdmZip from "adm-zip";
 
-const envPath = app.isPackaged
-  ? path.join(process.resourcesPath, ".env")
-  : path.join(__dirname, "../../.env");
+// ─── Config ───────────────────────────────────────────────────────────────────
+// Read config.json from the project root (dev) or extraResources (packaged).
+// Edit config.json to set your Spotify client ID — no rebuild required.
 
-dotenv.config({ path: envPath });
+const configPath = app.isPackaged
+  ? path.join(path.dirname(process.execPath), "config.json")
+  : path.join(__dirname, "../../config.json");
+
+let clientId: string | undefined;
+try {
+  const raw = fs.readFileSync(configPath, "utf-8");
+  const config: { spotifyClientId?: string } = JSON.parse(raw);
+  clientId = config.spotifyClientId || undefined;
+  if (!clientId) console.warn("[TuneSaver] config.json: spotifyClientId is empty.");
+} catch (err) {
+  console.error("[TuneSaver] Failed to load config.json:", err);
+}
 
 if (started) {
   app.quit();
 }
 
 let codeVerifier: string | null = null;
-const clientId = process.env.VITE_SPOTIFY_CLIENT_ID;
 
 let accessToken: string | null = null;
 
@@ -282,7 +292,25 @@ if (!gotTheLock) {
 }
 
 app.setAsDefaultProtocolClient("tunesaver");
-app.on("ready", createWindow);
+
+app.on("ready", () => {
+  // Spotify client IDs are exactly 32 lowercase hexadecimal characters.
+  const validClientId = /^[0-9a-f]{32}$/.test(clientId ?? "");
+  if (!validClientId) {
+    const where = app.isPackaged
+      ? "config.json (in the same folder as TuneSaver.exe)"
+      : "config.json (in the project root)";
+    dialog.showErrorBox(
+      "Invalid Spotify Client ID",
+      `TuneSaver cannot start because the Spotify client ID is missing or invalid.\n\n` +
+      `Open ${where} and set "spotifyClientId" to your 32-character Spotify client ID.\n\n` +
+      `You can create one at: https://developer.spotify.com/dashboard`,
+    );
+    app.quit();
+    return;
+  }
+  createWindow();
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {

@@ -15,6 +15,17 @@
   <img alt="Vite" src="https://img.shields.io/badge/Vite-5-646CFF?style=for-the-badge&logo=vite&logoColor=white" />
 </p>
 
+<p align="center">
+  <a href="#premise"><img alt="Premise" src="https://img.shields.io/badge/Premise-1a1a1d?style=for-the-badge" /></a>
+  <a href="#required-beat-saber-mods"><img alt="Required Mods" src="https://img.shields.io/badge/Required_Mods-1a1a1d?style=for-the-badge" /></a>
+  <a href="#using-a-release-build"><img alt="Release Build" src="https://img.shields.io/badge/Release_Build-1a1a1d?style=for-the-badge" /></a>
+  <a href="#local-setup"><img alt="Local Setup" src="https://img.shields.io/badge/Local_Setup-1a1a1d?style=for-the-badge" /></a>
+  <a href="#how-it-works--end-to-end"><img alt="How It Works" src="https://img.shields.io/badge/How_It_Works-1a1a1d?style=for-the-badge" /></a>
+  <a href="#settings"><img alt="Settings" src="https://img.shields.io/badge/Settings-1a1a1d?style=for-the-badge" /></a>
+  <a href="#app-structure"><img alt="App Structure" src="https://img.shields.io/badge/App_Structure-1a1a1d?style=for-the-badge" /></a>
+  <a href="#ownership"><img alt="Ownership" src="https://img.shields.io/badge/Ownership-1a1a1d?style=for-the-badge" /></a>
+</p>
+
 ---
 
 ## Premise
@@ -38,6 +49,119 @@ TuneSaver writes files that Beat Saber reads through its modding layer. You need
 | **PlaylistManager** | Reads `.bplist` files from the `Playlists` folder and shows them as in-game playlists. Required for TuneSaver's playlist export feature. |
 
 All three are available through ModAssistant. Install ModAssistant first, then tick SongCore and PlaylistManager.
+
+---
+
+## Using a Release Build
+
+If you've downloaded a pre-built release, you don't need Node.js or any build tools. You just need a Spotify developer app and one file edit.
+
+### Step 1 — Create a Spotify App
+
+TuneSaver connects to Spotify through your own developer app. Spotify's development mode limits an app to **25 whitelisted users**, so this app cannot be publicly distributed — everyone who wants to use it must create their own app or be added to someone else's allowlist.
+
+1. Go to [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) and log in.
+2. Click **Create app**.
+3. Fill in any name and description (e.g. "TuneSaver").
+4. Under **Redirect URIs**, click **Add** and enter exactly:
+   ```
+   tunesaver://callback
+   ```
+5. Under **APIs used**, tick **Web API**.
+6. Save the app.
+7. On the app dashboard, copy your **Client ID** — the 32-character alphanumeric string shown under the app name.
+
+---
+
+### Step 2 — Whitelist Users (Including Yourself)
+
+Because the app is in development mode, Spotify only allows explicitly whitelisted accounts to authenticate. **You must add your own Spotify account to this list or you will not be able to log in.**
+
+1. In your app's dashboard, go to **Settings → User Management**.
+2. Add the Spotify email address for every account that will use TuneSaver — **starting with your own**.
+3. Up to 25 users can be added. Anyone not on the list will get an authentication error when logging in.
+
+---
+
+### Step 3 — Set Your Client ID
+
+Extract the release ZIP. Inside the folder you'll find `config.json` sitting next to `TuneSaver.exe`:
+
+```json
+{
+  "spotifyClientId": "YOUR_SPOTIFY_CLIENT_ID_HERE"
+}
+```
+
+Open it in any text editor, replace `YOUR_SPOTIFY_CLIENT_ID_HERE` with the Client ID from Step 1, and save. If the value is missing or invalid, TuneSaver will show an error on launch and exit.
+
+---
+
+### Step 4 — Run
+
+Double-click `TuneSaver.exe`. The app opens — click **Connect Spotify** and log in with any whitelisted account.
+
+---
+
+## Local Setup
+
+### Prerequisites
+
+- **Node.js 18+** and **npm**
+- **Beat Saber** installed with **BSIPA**, **SongCore**, and **PlaylistManager** (see mod requirements above)
+- A **Spotify account** (free or premium)
+
+---
+
+### Step 1 — Create a Spotify App
+
+Follow the same steps as in [Using a Release Build → Step 1](#step-1--create-a-spotify-app) above to create a Spotify developer app and copy your Client ID.
+
+---
+
+### Step 2 — Whitelist Users (Including Yourself)
+
+Follow [Using a Release Build → Step 2](#step-2--whitelist-users-including-yourself) above. Don't forget to add your own Spotify account.
+
+---
+
+### Step 3 — Clone and Configure
+
+```bash
+git clone https://github.com/your-username/TuneSaver.git
+cd TuneSaver
+npm install
+```
+
+Open `config.json` at the project root (it's already there with a placeholder):
+
+```json
+{
+  "spotifyClientId": "YOUR_SPOTIFY_CLIENT_ID_HERE"
+}
+```
+
+Replace the placeholder with your Client ID from Step 1. The app reads this file at startup in both dev and packaged mode — no rebuild is needed when changing the value.
+
+---
+
+### Step 4 — Run
+
+```bash
+npm start
+```
+
+This starts Vite's dev server for the renderer and launches Electron. The app window opens and you can log in with any whitelisted Spotify account.
+
+---
+
+### Step 5 — Build a Distributable (Optional)
+
+```bash
+npm run make
+```
+
+Electron Forge packages the app and automatically copies `config.json` from the project root into the output folder next to the `.exe`. The resulting release ZIP is self-contained — recipients follow the [Using a Release Build](#using-a-release-build) steps above.
 
 ---
 
@@ -65,7 +189,7 @@ After login the renderer calls `GET /v1/me` to resolve the user's Spotify ID, th
 
 The Music Selection screen shows the first 6 playlists by default. A **Show All** button fetches the complete list. Clicking any playlist card opens a detail view that fetches all tracks from `GET /v1/playlists/{id}/items` (paginated, 100 per page) so you can preview the tracks before selecting.
 
-When a playlist is added to the selection, TuneSaver fires a lightweight background request to `GET /v1/playlists/{id}/tracks?limit=1` to retrieve the accurate track count (the simplified playlist object returned by `/me/playlists` sometimes omits this) and updates the count in the UI.
+When a playlist is added to the selection, TuneSaver fires a lightweight background request to `GET /v1/playlists/{id}/items?limit=1` to retrieve the accurate track count (the simplified playlist object returned by `/me/playlists` sometimes omits this) and updates the count in the UI.
 
 You can mix and match: select whole playlists (all tracks are fetched and tagged with the playlist ID for later bplist creation) and individual tracks (fetched from the detail view, tagged without a playlist ID and downloaded as standalone maps).
 
@@ -143,11 +267,11 @@ Files are written to `{beatSaberPath}/Playlists/TuneSaver - {playlistName}.bplis
 
 ## Settings
 
-| Setting              | Default                                                    | Effect                                                                                                |
-| -------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Beat Saber Path      | `C:/Program Files (x86)/Steam/steamapps/common/Beat Saber` | Root install directory used for CustomLevels scanning, map extraction, and bplist writing.            |
-| Match Threshold      | 80%                                                        | Maps scoring below this are shown as "No match" and excluded from downloads unless manually selected. |
-| Preferred Difficulty | Expert+                                                    | Maps that include this difficulty receive a small score bonus.                                        |
+| Setting              | Default | Effect                                                                                                |
+| -------------------- | ------- | ----------------------------------------------------------------------------------------------------- |
+| Beat Saber Path      | *(blank — must be set before searching)* | Root install directory used for CustomLevels scanning, map extraction, and bplist writing. |
+| Match Threshold      | 80%     | Maps scoring below this are shown as "No match" and excluded from downloads unless manually selected. |
+| Preferred Difficulty | Expert+ | Maps that include this difficulty receive a small score bonus.                                        |
 
 Settings are persisted to `localStorage` and loaded on every launch.
 
@@ -174,81 +298,6 @@ src/
     MatchResultsScreen.tsx   Match results, alternatives accordion, download progress
     SettingsScreen.tsx       Settings card (path, threshold, difficulty)
 ```
-
----
-
-## Local Setup
-
-### Prerequisites
-
-- **Node.js 18+** and **npm**
-- **Beat Saber** installed with **BSIPA**, **SongCore**, and **PlaylistManager** (see mod requirements above)
-- A **Spotify account** (free or premium)
-
----
-
-### Step 1 — Create a Spotify App
-
-TuneSaver connects to Spotify via your own developer app. Spotify's development mode limits an app to **25 whitelisted users**, so this app cannot be publicly distributed — everyone who wants to use it needs to either run their own instance or be added to your app's allowlist.
-
-1. Go to [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) and log in.
-2. Click **Create app**.
-3. Fill in any name and description (e.g. "TuneSaver").
-4. Under **Redirect URIs**, click **Add** and enter exactly:
-   ```
-   tunesaver://callback
-   ```
-5. Under **APIs used**, tick **Web API**.
-6. Save the app.
-7. On the app's dashboard page, copy your **Client ID** (the long alphanumeric string under the app name).
-
----
-
-### Step 2 — Add Authorised Users
-
-Because your app is in development mode, only explicitly whitelisted Spotify accounts can authenticate.
-
-1. In your app's dashboard, go to **Settings → User Management**.
-2. Add the Spotify email address of each person who will use TuneSaver (including yourself).
-3. Up to 25 users can be added. Anyone not on this list will see an error when trying to log in.
-
----
-
-### Step 3 — Clone and Configure
-
-```bash
-git clone https://github.com/your-username/TuneSaver.git
-cd TuneSaver
-npm install
-```
-
-Create a `.env` file at the project root:
-
-```env
-VITE_SPOTIFY_CLIENT_ID=your_client_id_here
-```
-
-Replace `your_client_id_here` with the Client ID from Step 1.
-
----
-
-### Step 4 — Run
-
-```bash
-npm start
-```
-
-This starts Vite's dev server for the renderer and launches Electron. The app window opens and you can log in with any whitelisted Spotify account.
-
----
-
-### Step 5 — Build a Distributable (Optional)
-
-```bash
-npm run make
-```
-
-Electron Forge packages the app into a platform-specific installer (NSIS on Windows, dmg on macOS). The `.env` file is included as an extra resource so the client ID is available in the packaged build.
 
 ---
 
