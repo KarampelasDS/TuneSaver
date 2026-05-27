@@ -44,11 +44,11 @@ TuneSaver writes files that Beat Saber reads through its modding layer. You need
 
 | Mod                 | Purpose                                                                                                                                  |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| **BSIPA**           | The mod loader. Required for all other mods to function. Install via [ModAssistant](https://github.com/Assistant/ModAssistant).          |
+| **BSIPA**           | The mod loader. Required for all other mods to function.                                                                                 |
 | **SongCore**        | Loads custom levels from the `CustomLevels` folder at startup and makes them playable. Without it, downloaded maps won't appear.         |
 | **PlaylistManager** | Reads `.bplist` files from the `Playlists` folder and shows them as in-game playlists. Required for TuneSaver's playlist export feature. |
 
-All three are available through ModAssistant. Install ModAssistant first, then tick SongCore and PlaylistManager.
+All three are available through [BSManager](https://www.bsmanager.io/). Install BSManager first, then tick SongCore and PlaylistManager.
 
 ---
 
