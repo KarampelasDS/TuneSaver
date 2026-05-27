@@ -203,25 +203,31 @@ Once you click **Find Beat Saber Maps**, TuneSaver enters the matching phase:
 
 **Installed map scan:** Before searching, TuneSaver calls into the main process via IPC to scan the `CustomLevels` folder. Folder names in `CustomLevels` follow the pattern `{id or hash} (Song Name - Author)`. The scanner extracts the hex prefix from each folder name and returns those IDs/hashes. Any BeatSaver map whose short ID or version hash matches an entry in this set is marked as **Already Installed** and skipped during download.
 
-**BeatSaver search:** For each track, TuneSaver queries:
+**BeatSaver search:** Requests are sent **5 at a time** with a 500 ms pause between batches to stay within BeatSaver's rate limits. BeatSaver's search uses Apache Solr under the hood, which handles partial matches and fuzzy text reasonably well — but raw Spotify titles are often too noisy to query directly. Before searching, TuneSaver normalises the track name through several passes:
 
-```
-GET https://api.beatsaver.com/search/text/0?q={songName}+{artistName}
-```
+- **Parentheticals and feature tags** are stripped — `"Can't Stop (feat. Someone)"` becomes `"Can't Stop"`.
+- **Version suffixes** are removed — `"This Fffire - New Version"` becomes `"This Fffire"`.
+- **Repeated letters are collapsed** — `"Fffire"` becomes `"Fire"`, handling tracks with intentionally doubled letters whose BeatSaver maps use standard spelling.
+- **Typographic apostrophes and quotes** (`'`, `'`, `"`, `"`, etc.) are normalised to ASCII equivalents so Solr tokenises them correctly.
 
-BeatSaver's search uses Apache Solr under the hood which handles partial matches and fuzzy text well. Requests are sent **5 at a time** with a 500 ms pause between batches to avoid hitting BeatSaver's rate limits. The top 5 results are kept per track.
+Rather than firing a single query, TuneSaver tries progressively simpler formulations — raw title + artist, cleaned title + artist, core title + artist, core title alone, deduplicated title, and finally a second-page sweep for common titles — stopping as soon as any candidate reaches a title similarity of 0.85 or above. Most tracks match on the first query; harder cases accumulate up to ~60 candidates across all steps.
+
+The candidate pool is sorted by `title_similarity × 0.65 + artist_similarity × 0.35` — the same weighted formula used for final scoring — so that when many maps share a title, the one by the correct artist ranks first. The top 5 results are kept per track.
 
 **Match scoring:** Because BeatSaver doesn't return a relevance score, TuneSaver computes its own. Each candidate map is scored against the Spotify track using a hybrid similarity function:
 
 - **String normalisation:** both strings are lowercased and stripped of all non-alphanumeric characters before comparison.
 - **Word overlap (fast path):** if the two strings share at least half their words, the score is `0.5 + (overlap_ratio × 0.5)`. This rewards maps where the key words match even if minor words differ.
 - **Levenshtein distance (fallback):** when word overlap is below 50%, the score is `1 - (edit_distance / max_length)`, giving a continuous measure of character-level similarity.
+- **Title comparison:** the title similarity function also tries the Spotify core title (pre-dash) and handles the common BeatSaver convention of titling maps as `"Artist - Song"` by comparing against each part separately.
 - **Weighted combination:** `final_score = title_similarity × 0.65 + artist_similarity × 0.35`
 - **Difficulty bonus:** if the map includes your preferred difficulty (Expert+, Expert, etc.), the score gets a +2% bonus, capped at 100%.
 
-The 5 candidates are sorted by this score. The top result becomes the selected match. Results below the match threshold set in Settings (default 80%) are shown as "No match found" but the other 4 alternatives remain accessible.
+The top result becomes the selected match. Results below the match threshold set in Settings (default 80%) are shown as "No match found".
 
-**Alternatives:** Each match card has an **Alternatives** accordion showing the other 4 candidates with their cover art, mapper name, and available difficulties. Selecting an alternative marks the track as `manuallySelected`, which bypasses the threshold check entirely — that map will always be downloaded and included in the bplist regardless of score.
+**Alternatives:** Every match card has an **Alternatives** accordion showing the other candidates with their cover art, mapper name, and available difficulties. For "No match found" cards where the search still returned below-threshold results, the accordion is labelled **Candidates** and shown by default so you can manually pick the closest result. Selecting any alternative marks the track as `manuallySelected`, which bypasses the threshold check entirely — that map will always be downloaded and included in the bplist regardless of score.
+
+**Rejecting tracks:** Each match card has a skip (✕) button. Rejected tracks are counted in the header, excluded from downloads, and excluded from the bplist. They can be restored individually before downloading.
 
 ---
 

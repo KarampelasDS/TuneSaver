@@ -81,6 +81,7 @@ export type TrackMatch = {
   searching: boolean;
   sourcePlaylistId?: string;
   manuallySelected: boolean;
+  rejected: boolean;
 };
 
 export type AppSettings = {

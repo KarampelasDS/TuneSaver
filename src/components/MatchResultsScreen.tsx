@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Settings,
   X,
+  RotateCcw,
 } from "lucide-react";
 import type { BeatSaverMap, MatchPhase, SpotifyTrack, TrackMatch } from "../types";
 
@@ -20,6 +21,7 @@ type MatchResultsScreenProps = {
   downloadProgress: Map<string, number>;
   downloadErrors: Map<string, string>;
   onSelectAlternative: (selectionId: string, index: number) => void;
+  onRejectTrack: (selectionId: string) => void;
   onDownloadAll: () => void;
   onStartNew: () => void;
   onOpenSettings: () => void;
@@ -60,7 +62,9 @@ function SpotifyTrackPanel({ track }: { track: SpotifyTrack }) {
 
   return (
     <div className="match-spotify-panel">
-      <span className="match-panel-label">SPOTIFY TRACK</span>
+      <div className="match-panel-header">
+        <span className="match-panel-label">SPOTIFY TRACK</span>
+      </div>
       <div className="match-track-info">
         {imageUrl ? (
           <img className="match-art" src={imageUrl} alt="" />
@@ -90,6 +94,7 @@ function BeatSaverMapPanel({
   downloadProgress,
   downloadError,
   onSelectAlternative,
+  onRejectTrack,
 }: {
   tm: TrackMatch;
   matchThreshold: number;
@@ -97,23 +102,122 @@ function BeatSaverMapPanel({
   downloadProgress: number | undefined;
   downloadError: string | undefined;
   onSelectAlternative: (index: number) => void;
+  onRejectTrack: () => void;
 }) {
   const [altOpen, setAltOpen] = useState(false);
+
+  const canReject = phase.type === "results";
 
   const map = tm.results[tm.selectedResultIndex] ?? null;
   // A manually selected alternative is always shown, regardless of score
   const belowThreshold =
     !map || (!tm.manuallySelected && tm.matchScore < matchThreshold);
 
+  // ── Rejected state ──────────────────────────────────────────────────────────
+  if (tm.rejected) {
+    return (
+      <div className="match-bs-panel match-rejected-panel">
+        <div className="match-panel-header">
+          <span className="match-panel-label">BEAT SABER MAP</span>
+          {canReject && (
+            <button
+              className="match-reject-btn match-reject-restore"
+              type="button"
+              title="Restore — include in download"
+              onClick={onRejectTrack}
+            >
+              <RotateCcw size={13} />
+            </button>
+          )}
+        </div>
+        <div className="match-no-result-body">
+          <XCircle size={36} className="rejected-icon" />
+          <span className="no-result-title rejected-title">Skipped</span>
+          <span className="no-result-sub">Will not be downloaded</span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── No match state ──────────────────────────────────────────────────────────
   if (belowThreshold) {
+    const hasCandidates = tm.results.length > 0;
     return (
       <div className="match-bs-panel match-no-result-panel">
-        <span className="match-panel-label">BEAT SABER MAP</span>
+        <div className="match-panel-header">
+          <span className="match-panel-label">BEAT SABER MAP</span>
+          {canReject && (
+            <button
+              className="match-reject-btn"
+              type="button"
+              title="Skip song — exclude from download"
+              onClick={onRejectTrack}
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
         <div className="match-no-result-body">
           <XCircle size={36} className="no-result-icon" />
-          <span className="no-result-title">No map found</span>
-          <span className="no-result-sub">Try searching BeatSaver manually</span>
+          <span className="no-result-title">No match found</span>
+          <span className="no-result-sub">
+            {hasCandidates
+              ? "All results scored below threshold — pick one below"
+              : "Try searching BeatSaver manually"}
+          </span>
         </div>
+
+        {/* Still show the candidate list so the user can manually select */}
+        {hasCandidates && phase.type === "results" && (
+          <div className="match-alt-section">
+            <button
+              className="match-alt-btn"
+              type="button"
+              onClick={() => setAltOpen((v) => !v)}
+            >
+              {tm.results.length} Candidate{tm.results.length !== 1 ? "s" : ""}
+              {altOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {altOpen && (
+              <div className="match-alt-list">
+                {tm.results.map((alt, index) => {
+                  const altDiffs = uniqueDiffs(alt);
+                  const altCover = alt.versions?.[0]?.coverURL;
+                  return (
+                    <button
+                      key={alt.id}
+                      className="match-alt-item"
+                      type="button"
+                      onClick={() => {
+                        onSelectAlternative(index);
+                        setAltOpen(false);
+                      }}
+                    >
+                      {altCover ? (
+                        <img className="alt-art" src={altCover} alt="" />
+                      ) : (
+                        <div className="alt-art alt-art-empty" />
+                      )}
+                      <div className="alt-copy">
+                        <span className="alt-name">{alt.name}</span>
+                        <span className="alt-mapper">
+                          {alt.metadata.levelAuthorName}
+                        </span>
+                        <div className="alt-diffs">
+                          {altDiffs.map((d) => (
+                            <span key={d} className="diff-tag diff-tag-sm">
+                              {DIFF_LABELS[d] ?? d}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -131,8 +235,22 @@ function BeatSaverMapPanel({
 
   return (
     <div className="match-bs-panel">
-      <span className="match-panel-label">BEAT SABER MAP</span>
-      <span className={scoreBadgeClass(tm.matchScore)}>{tm.matchScore}% Match</span>
+      <div className="match-panel-header">
+        <span className="match-panel-label">BEAT SABER MAP</span>
+        <div className="match-panel-header-right">
+          <span className={scoreBadgeClass(tm.matchScore)}>{tm.matchScore}% Match</span>
+          {canReject && (
+            <button
+              className="match-reject-btn"
+              type="button"
+              title="Skip song — exclude from download"
+              onClick={onRejectTrack}
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="match-map-info">
         {coverUrl ? (
@@ -269,6 +387,7 @@ export function MatchResultsScreen({
   downloadProgress,
   downloadErrors,
   onSelectAlternative,
+  onRejectTrack,
   onDownloadAll,
   onStartNew,
   onOpenSettings,
@@ -302,20 +421,22 @@ export function MatchResultsScreen({
   }, [phase.type]);
 
   const unmatched = trackMatches.filter(
-    (tm) => !tm.searching && (!tm.results.length || (!tm.manuallySelected && tm.matchScore < matchThreshold)),
+    (tm) => !tm.searching && !tm.rejected && (!tm.results.length || (!tm.manuallySelected && tm.matchScore < matchThreshold)),
   );
   const showThresholdTip =
     phase.type === "results" && !tipDismissed && unmatched.length >= 5;
 
   const matched = trackMatches.filter(
     (tm) =>
+      !tm.rejected &&
       tm.results.length > 0 &&
       (tm.matchScore >= matchThreshold || tm.manuallySelected),
   );
   const approved = matched.filter((tm) => !tm.isInstalled);
+  const rejectedCount = trackMatches.filter((tm) => tm.rejected).length;
 
   let headingTitle = "Match Results";
-  let headingSub = `Found ${matched.length} match${matched.length !== 1 ? "es" : ""} • ${approved.length} approved`;
+  let headingSub = `Found ${matched.length} match${matched.length !== 1 ? "es" : ""} • ${approved.length} to download${rejectedCount > 0 ? ` • ${rejectedCount} skipped` : ""}`;
 
   if (phase.type === "downloading") {
     headingTitle = "Downloading";
@@ -328,7 +449,7 @@ export function MatchResultsScreen({
         : `${phase.succeeded} map${phase.succeeded !== 1 ? "s" : ""} downloaded${phase.failed > 0 ? `, ${phase.failed} failed` : ""}`;
     const playlistPart =
       phase.playlistsCreated > 0
-        ? ` • ${phase.playlistsCreated} Beat Saber playlist${phase.playlistsCreated !== 1 ? "s" : ""} created`
+        ? ` • ${phase.playlistsCreated} Beat Saber playlist${phase.playlistsCreated !== 1 ? "s" : ""} saved`
         : "";
     headingSub = mapPart + playlistPart;
   }
@@ -361,6 +482,7 @@ export function MatchResultsScreen({
             className="tip-dismiss"
             type="button"
             aria-label="Dismiss tip"
+            title="Dismiss"
             onClick={() => setTipDismissed(true)}
           >
             <X size={14} />
@@ -381,6 +503,7 @@ export function MatchResultsScreen({
               onSelectAlternative={(index) =>
                 onSelectAlternative(tm.selectionId, index)
               }
+              onRejectTrack={() => onRejectTrack(tm.selectionId)}
             />
           </div>
         ))}
@@ -422,7 +545,7 @@ export function MatchResultsScreen({
                       {" "}•{" "}
                       <strong>{phase.playlistsCreated}</strong> Beat Saber{" "}
                       {phase.playlistsCreated === 1 ? "playlist" : "playlists"}{" "}
-                      created
+                      saved
                     </>
                   )}
                 </>

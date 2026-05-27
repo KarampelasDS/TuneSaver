@@ -21,6 +21,7 @@ export function AppHeader({
             className="icon-button"
             type="button"
             aria-label="Back"
+            title="Go back"
             onClick={onBack}
           >
             <ArrowLeft size={20} />
@@ -37,6 +38,7 @@ export function AppHeader({
         className="icon-button"
         type="button"
         aria-label="Settings"
+        title="Settings"
         onClick={onSettingsClick}
         disabled={!canOpenSettings}
       >

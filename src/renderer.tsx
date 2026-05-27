@@ -249,11 +249,21 @@ async function searchBeatSaver(track: SpotifyTrack): Promise<BeatSaverMap[]> {
   const coreName  = cleanName.replace(/\s+[-–—]\s+.+$/, "").trim() || cleanName;
   const artist    = track.artists?.[0]?.name ?? "";
 
+  // Spotify API often returns typographic quotes (U+2018/U+2019 etc.).
+  // encodeURIComponent("%E2%80%99") doesn't tokenise the same as ASCII "'" in
+  // BeatSaver's Solr, so normalise before encoding every query.
+  const normalizeForQuery = (s: string) =>
+    s
+      .replace(/[‘’‚‛]/g, "'") // curly single quotes → '
+      .replace(/[“”„‟]/g, '"') // curly double quotes → "
+      .trim();
+
   // Fire one BeatSaver text query and return the docs.
-  const bsSearch = async (q: string): Promise<BeatSaverMap[]> => {
+  // page defaults to 0 (first 20 results); pass 1 to get the next 20.
+  const bsSearch = async (q: string, page = 0): Promise<BeatSaverMap[]> => {
     try {
       const res = await fetch(
-        `https://api.beatsaver.com/search/text/0?q=${encodeURIComponent(q)}`,
+        `https://api.beatsaver.com/search/text/${page}?q=${encodeURIComponent(normalizeForQuery(q))}`,
       );
       if (!res.ok) return [];
       const data: BeatSaverSearchResponse = await res.json();
@@ -270,14 +280,17 @@ async function searchBeatSaver(track: SpotifyTrack): Promise<BeatSaverMap[]> {
     return pool;
   };
 
-  // Re-sort the entire pool so the closest title match is always first,
-  // regardless of which query fetched it.
-  const sortByRelevance = (pool: BeatSaverMap[]) =>
-    [...pool].sort(
-      (a, b) =>
-        titleSimilarity(coreName, b.metadata.songName) -
-        titleSimilarity(coreName, a.metadata.songName),
-    );
+  // Re-sort the entire pool using the same combined title+artist weighting as
+  // calculateMatchScore so the correct map always wins, even when multiple maps
+  // share the same song title but by different artists (e.g. many "Polarize"
+  // covers would otherwise push the real Twenty One Pilots map out of the top 5).
+  const allArtists = track.artists?.map((a) => a.name).join(" ") ?? "";
+  const sortByRelevance = (pool: BeatSaverMap[]) => {
+    const combined = (m: BeatSaverMap) =>
+      titleSimilarity(coreName, m.metadata.songName) * 0.65 +
+      stringSimilarity(allArtists, m.metadata.songAuthorName) * 0.35;
+    return [...pool].sort((a, b) => combined(b) - combined(a));
+  };
 
   // High-confidence early exit: we found at least one map that closely matches
   // the track title. Threshold is 0.85 — tight enough to avoid false positives
@@ -306,6 +319,26 @@ async function searchBeatSaver(track: SpotifyTrack): Promise<BeatSaverMap[]> {
   // ── Step 4: core title only (no artist — maximises recall when the artist
   //    name is confusing BeatSaver's search or the map is filed differently)
   pool = merge(pool, await bsSearch(coreName));
+  if (hasStrongMatch(pool)) return sortByRelevance(pool).slice(0, 5);
+
+  // ── Step 5: deduplicated-letter title (e.g. "Fffire" → "Fire") ────────────
+  // Handles tracks with intentionally repeated letters that BeatSaver maps
+  // spell with the standard number of letters (e.g. "This Fffire" → "This Fire").
+  const dedupedCore = coreName.replace(/(.)\1+/gi, "$1");
+  if (dedupedCore !== coreName) {
+    pool = merge(pool, await bsSearch(`${dedupedCore} ${artist}`.trim()));
+    if (hasStrongMatch(pool)) return sortByRelevance(pool).slice(0, 5);
+    pool = merge(pool, await bsSearch(dedupedCore));
+    if (hasStrongMatch(pool)) return sortByRelevance(pool).slice(0, 5);
+  }
+
+  // ── Step 6: page-1 sweep for common song titles ───────────────────────────
+  // If every step so far returned results but none scored ≥ 0.85, the right map
+  // is probably beyond position 20 in BeatSaver's ranking. Fetch the next page
+  // for the two most direct queries so we scan up to 60 candidates.
+  pool = merge(pool, await bsSearch(`${rawName} ${artist}`.trim(), 1));
+  if (hasStrongMatch(pool)) return sortByRelevance(pool).slice(0, 5);
+  pool = merge(pool, await bsSearch(coreName, 1));
 
   return sortByRelevance(pool).slice(0, 5);
 }
@@ -577,6 +610,7 @@ function App() {
         searching: true,
         sourcePlaylistId,
         manuallySelected: false,
+        rejected: false,
       }),
     );
     setTrackMatches(initial);
@@ -622,6 +656,16 @@ function App() {
     setMatchPhase({ type: "results" });
   };
 
+  const rejectTrack = (selectionId: string) => {
+    setTrackMatches((prev) =>
+      prev.map((tm) =>
+        tm.selectionId === selectionId
+          ? { ...tm, rejected: !tm.rejected }
+          : tm,
+      ),
+    );
+  };
+
   const selectAlternative = (selectionId: string, index: number) => {
     setTrackMatches((prev) =>
       prev.map((tm) => {
@@ -646,6 +690,7 @@ function App() {
 
     const toDownload = trackMatches.filter(
       (tm) =>
+        !tm.rejected &&
         tm.results.length > 0 &&
         (tm.matchScore >= settings.matchThreshold || tm.manuallySelected) &&
         !tm.isInstalled,
@@ -727,6 +772,7 @@ function App() {
 
       const songs = playlistMatches
         .filter((tm) => {
+          if (tm.rejected) return false;
           if (!tm.results.length) return false;
           const aboveThreshold =
             tm.matchScore >= settings.matchThreshold || tm.manuallySelected;
@@ -839,7 +885,7 @@ function App() {
   return (
     <div className="app-shell">
       <AppHeader
-        canOpenSettings={loggedIn}
+        canOpenSettings={loggedIn && currentView !== "settings"}
         showBackButton={loggedIn && currentView !== "music"}
         onBack={goBack}
         onSettingsClick={() => {
@@ -861,6 +907,7 @@ function App() {
           downloadProgress={downloadProgress}
           downloadErrors={downloadErrors}
           onSelectAlternative={selectAlternative}
+          onRejectTrack={rejectTrack}
           onDownloadAll={startDownloads}
           onStartNew={startNew}
           onOpenSettings={openSettings}

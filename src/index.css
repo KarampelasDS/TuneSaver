@@ -1105,13 +1105,57 @@ button {
   border-radius: 0 10px 10px 0;
 }
 
+.match-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 22px; /* matches reject button height — keeps both panels' content aligned */
+  margin-bottom: 12px;
+}
+
+.match-panel-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .match-panel-label {
   display: block;
-  margin-bottom: 12px;
-  color: #6e6e73;
+  /* margin-bottom handled by .match-panel-header when inside one */
+  color: #10b8d6;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
+}
+
+/* Reject / restore button */
+.match-reject-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  color: rgba(239, 68, 68, 0.55);
+  background: rgba(239, 68, 68, 0.08);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.match-reject-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.18);
+}
+
+.match-reject-restore {
+  color: rgba(16, 184, 214, 0.55);
+  background: rgba(16, 184, 214, 0.08);
+}
+
+.match-reject-restore:hover {
+  color: #10b8d6;
+  background: rgba(16, 184, 214, 0.18);
 }
 
 .match-track-info,
@@ -1236,15 +1280,13 @@ button {
   border: 1px solid #78490a;
 }
 
-/* Match score badge */
+/* Match score badge — lives inside .match-panel-header-right flex row */
 .score-badge {
-  position: absolute;
-  top: 14px;
-  right: 14px;
   padding: 3px 9px;
   border-radius: 5px;
   font-size: 12px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .score-high {
@@ -1295,6 +1337,21 @@ button {
 .no-result-sub {
   color: #6e6e73;
   font-size: 13px;
+}
+
+/* Rejected / skipped state */
+.match-rejected-panel {
+  display: flex;
+  flex-direction: column;
+  opacity: 0.55;
+}
+
+.rejected-icon {
+  color: #6e6e73;
+}
+
+.rejected-title {
+  color: #6e6e73 !important;
 }
 
 /* Alternatives accordion */
