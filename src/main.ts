@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain, dialog } from "electron";
+import { app, BrowserWindow, shell, ipcMain, dialog } from "electron"; // dialog kept for select-directory
 import path from "node:path";
 import fs from "node:fs";
 import https from "node:https";
@@ -293,22 +293,32 @@ if (!gotTheLock) {
 
 app.setAsDefaultProtocolClient("tunesaver");
 
-app.on("ready", () => {
-  // Spotify client IDs are exactly 32 lowercase hexadecimal characters.
-  const validClientId = /^[0-9a-f]{32}$/.test(clientId ?? "");
-  if (!validClientId) {
-    const where = app.isPackaged
-      ? "config.json (in the same folder as TuneSaver.exe)"
-      : "config.json (in the project root)";
-    dialog.showErrorBox(
-      "Invalid Spotify Client ID",
-      `TuneSaver cannot start because the Spotify client ID is missing or invalid.\n\n` +
-      `Open ${where} and set "spotifyClientId" to your 32-character Spotify client ID.\n\n` +
-      `You can create one at: https://developer.spotify.com/dashboard`,
-    );
-    app.quit();
-    return;
+// Spotify client IDs are exactly 32 lowercase hexadecimal characters.
+const CLIENT_ID_RE = /^[0-9a-f]{32}$/;
+
+ipcMain.handle("get-client-id", () => ({
+  valid: CLIENT_ID_RE.test(clientId ?? ""),
+}));
+
+ipcMain.handle("save-client-id", (_event, id: string) => {
+  if (!CLIENT_ID_RE.test(id)) {
+    return { success: false, error: "Client ID must be exactly 32 lowercase hex characters." };
   }
+  try {
+    let existing: Record<string, unknown> = {};
+    if (fs.existsSync(configPath)) {
+      existing = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    }
+    existing.spotifyClientId = id;
+    fs.writeFileSync(configPath, JSON.stringify(existing, null, 2), "utf-8");
+    clientId = id;
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+});
+
+app.on("ready", () => {
   createWindow();
 });
 

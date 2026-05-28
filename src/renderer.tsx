@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { useState, useEffect } from "react";
 import {
   AppHeader,
+  HelpModal,
   LoginScreen,
   MatchResultsScreen,
   MusicSelectionScreen,
@@ -49,6 +50,10 @@ declare global {
         songs: { hash: string; songName: string }[];
         beatSaberPath: string;
       }) => Promise<{ success: boolean; error?: string }>;
+      getClientId: () => Promise<{ valid: boolean }>;
+      saveClientId: (
+        id: string,
+      ) => Promise<{ success: boolean; error?: string }>;
     };
   }
 }
@@ -77,9 +82,10 @@ function saveSettings(s: AppSettings) {
 
 function stringSimilarity(a: string, b: string): number {
   const norm = (s: string) =>
-    s
+    stripParentheticals(s)
       .toLowerCase()
-      .replace(/[^a-z0-9 ]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
       .trim();
   const na = norm(a);
   const nb = norm(b);
@@ -129,24 +135,22 @@ function stripParentheticals(s: string): string {
 //   Spotify convention    "Song - New Version"  → scores aCore (pre-dash) too
 function titleSimilarity(spotifyTitle: string, bsTitle: string): number {
   const a = stripParentheticals(spotifyTitle);
-  // Strip Spotify-style " - Version Suffix" (e.g. "Song - Live Version" → "Song")
   const aCore = a.replace(/\s+[-–—]\s+.+$/, "").trim() || a;
+
   const b = stripParentheticals(bsTitle);
 
-  let best = Math.max(
-    stringSimilarity(a,     bsTitle), // cleaned spotify vs raw BS
-    stringSimilarity(a,     b),       // both cleaned
-    stringSimilarity(aCore, b),       // core spotify title vs cleaned BS
-  );
+  let best = Math.max(stringSimilarity(a, b), stringSimilarity(aCore, b));
 
-  // Many BeatSaver maps use "Artist - Song" as the title — try just the parts
-  const dashIdx = b.indexOf(" - ");
-  if (dashIdx !== -1) {
+  const dashMatch = b.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+
+  if (dashMatch) {
+    const [, left, right] = dashMatch;
+
     best = Math.max(
       best,
-      stringSimilarity(a,     b.slice(dashIdx + 3)), // after " - "
-      stringSimilarity(a,     b.slice(0, dashIdx)),   // before " - "
-      stringSimilarity(aCore, b.slice(dashIdx + 3)), // core vs after " - "
+      stringSimilarity(a, right),
+      stringSimilarity(a, left),
+      stringSimilarity(aCore, right),
     );
   }
 
@@ -242,12 +246,12 @@ async function fetchPlaylistTracksAll(
 // ─── BeatSaver search ─────────────────────────────────────────────────────────
 
 async function searchBeatSaver(track: SpotifyTrack): Promise<BeatSaverMap[]> {
-  const rawName   = track.name ?? "";
+  const rawName = track.name ?? "";
   const cleanName = stripParentheticals(rawName);
   // Strip Spotify-style " - Version Suffix" (e.g. "This Fffire - New Version" → "This Fffire").
   // Used for search queries and as the reference title for relevance sorting.
-  const coreName  = cleanName.replace(/\s+[-–—]\s+.+$/, "").trim() || cleanName;
-  const artist    = track.artists?.[0]?.name ?? "";
+  const coreName = cleanName.replace(/\s+[-–—]\s+.+$/, "").trim() || cleanName;
+  const artist = track.artists?.[0]?.name ?? "";
 
   // Spotify API often returns typographic quotes (U+2018/U+2019 etc.).
   // encodeURIComponent("%E2%80%99") doesn't tokenise the same as ASCII "'" in
@@ -296,7 +300,13 @@ async function searchBeatSaver(track: SpotifyTrack): Promise<BeatSaverMap[]> {
   // the track title. Threshold is 0.85 — tight enough to avoid false positives
   // like "Can't Stop Won't Stop" (≈ 0.75) stopping the search prematurely.
   const hasStrongMatch = (pool: BeatSaverMap[]) =>
-    pool.some((m) => titleSimilarity(coreName, m.metadata.songName) >= 0.85);
+    pool.some((m) => {
+      const title = titleSimilarity(coreName, m.metadata.songName);
+
+      const artist = stringSimilarity(allArtists, m.metadata.songAuthorName);
+
+      return title * 0.65 + artist * 0.35 >= 0.9;
+    });
 
   // ── Step 1: raw title + artist (exactly as Spotify gives it) ──────────────
   let pool = await bsSearch(`${rawName} ${artist}`.trim());
@@ -360,6 +370,143 @@ async function runInBatches<T, R>(
   return results;
 }
 
+// ─── Client ID setup modal ────────────────────────────────────────────────────
+
+const CLIENT_ID_RE = /^[0-9a-f]{32}$/;
+
+function ClientIdModal({ onSaved }: { onSaved: () => void }) {
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const valid = CLIENT_ID_RE.test(value.trim());
+
+  const handleSave = async () => {
+    if (!valid) return;
+    setSaving(true);
+    setError(null);
+    const result = await window.electron.saveClientId(value.trim());
+    setSaving(false);
+    if (result.success) {
+      onSaved();
+    } else {
+      setError(result.error ?? "Failed to save.");
+    }
+  };
+
+  return (
+    <div className="modal-backdrop">
+      <div
+        className="clientid-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="clientid-modal-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="clientid-modal-header">
+          <div className="clientid-modal-icon" aria-hidden="true">
+            {/* Spotify-style music note */}
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 18V5l12-2v13" />
+              <circle cx="6" cy="18" r="3" />
+              <circle cx="18" cy="16" r="3" />
+            </svg>
+          </div>
+          <div>
+            <h2 id="clientid-modal-title" className="clientid-modal-title">
+              Connect to Spotify
+            </h2>
+            <p className="clientid-modal-sub">One-time setup — takes about a minute</p>
+          </div>
+        </div>
+
+        {/* Prerequisites */}
+        <div className="clientid-prereq-list">
+          <div className="clientid-prereq">
+            <span className="clientid-prereq-num">1</span>
+            <div className="clientid-prereq-copy">
+              <span className="clientid-prereq-title">Create a Spotify developer app</span>
+              <span className="clientid-prereq-desc">
+                Go to{" "}
+                <button className="tip-settings-link" type="button"
+                  onClick={() => window.electron.openExternal("https://developer.spotify.com/dashboard")}>
+                  developer.spotify.com/dashboard
+                </button>
+                , create an app, and add{" "}
+                <code className="help-code">tunesaver://callback</code> as a
+                Redirect URI. Then copy your <strong>Client ID</strong>.
+              </span>
+            </div>
+          </div>
+
+          <div className="clientid-prereq">
+            <span className="clientid-prereq-num">2</span>
+            <div className="clientid-prereq-copy">
+              <span className="clientid-prereq-title">Whitelist your account</span>
+              <span className="clientid-prereq-desc">
+                In the app dashboard go to <strong>Settings → User Management</strong> and
+                add your Spotify email address. Developer apps are limited to 5 users —
+                you must add yourself or login will fail.
+              </span>
+            </div>
+          </div>
+
+          <div className="clientid-prereq">
+            <span className="clientid-prereq-num">3</span>
+            <div className="clientid-prereq-copy">
+              <span className="clientid-prereq-title">Install required Beat Saber mods</span>
+              <span className="clientid-prereq-desc">
+                Use{" "}
+                <button className="tip-settings-link" type="button"
+                  onClick={() => window.electron.openExternal("https://www.bsmanager.io/")}>
+                  BSManager
+                </button>
+                {" "}to install <strong>BSIPA</strong>, <strong>SongCore</strong>, and{" "}
+                <strong>PlaylistManager</strong> — needed for custom maps and playlists to appear in-game.
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Input */}
+        <div className="client-id-field">
+          <label className="clientid-label" htmlFor="clientid-input">
+            Paste your Client ID
+          </label>
+          <input
+            id="clientid-input"
+            className="client-id-input"
+            type="text"
+            placeholder="e.g. 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d"
+            value={value}
+            maxLength={32}
+            spellCheck={false}
+            autoComplete="off"
+            onChange={(e) => { setValue(e.target.value.toLowerCase()); setError(null); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && valid) handleSave(); }}
+          />
+          {value.length > 0 && !valid && (
+            <span className="client-id-hint">
+              Must be exactly 32 lowercase hex characters ({value.trim().length}/32)
+            </span>
+          )}
+          {error && <span className="client-id-error">{error}</span>}
+        </div>
+
+        <button
+          className="clientid-save-btn"
+          type="button"
+          disabled={!valid || saving}
+          onClick={handleSave}
+        >
+          {saving ? "Saving…" : "Save & Continue"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 type AppView = "music" | "settings" | "playlist" | "matching";
@@ -387,6 +534,10 @@ function App() {
   const [isShowingAllPlaylists, setIsShowingAllPlaylists] = useState(false);
   const [isLoadingAllPlaylists, setIsLoadingAllPlaylists] = useState(false);
 
+  // Client ID setup — null = checking, false = missing/invalid, true = ready
+  const [clientIdReady, setClientIdReady] = useState<boolean | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
+
   // Settings & navigation history
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
   const [previousView, setPreviousView] = useState<AppView>("music");
@@ -405,6 +556,8 @@ function App() {
   );
 
   useEffect(() => {
+    window.electron.getClientId().then(({ valid }) => setClientIdReady(valid));
+
     window.electron.onAuthSuccess((t) => {
       setToken(t);
       setLoggedIn(true);
@@ -618,7 +771,7 @@ function App() {
 
     // 4. BeatSaver search — 5 at a time
     let done = 0;
-    await runInBatches(allTracks, 5, async ({ selectionId, track }) => {
+    await runInBatches(allTracks, 2, async ({ selectionId, track }) => {
       const results = await searchBeatSaver(track);
 
       const scored = results
@@ -651,6 +804,7 @@ function App() {
 
       done += 1;
       setMatchPhase({ type: "searching", done, total: allTracks.length });
+      await new Promise((r) => setTimeout(r, 500));
     });
 
     setMatchPhase({ type: "results" });
@@ -659,9 +813,7 @@ function App() {
   const rejectTrack = (selectionId: string) => {
     setTrackMatches((prev) =>
       prev.map((tm) =>
-        tm.selectionId === selectionId
-          ? { ...tm, rejected: !tm.rejected }
-          : tm,
+        tm.selectionId === selectionId ? { ...tm, rejected: !tm.rejected } : tm,
       ),
     );
   };
@@ -891,6 +1043,7 @@ function App() {
         onSettingsClick={() => {
           if (loggedIn) openSettings();
         }}
+        onHelpClick={() => setShowHelp(true)}
       />
 
       {loggedIn && currentView === "settings" ? (
@@ -939,6 +1092,12 @@ function App() {
         />
       ) : (
         <LoginScreen />
+      )}
+
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
+
+      {clientIdReady === false && (
+        <ClientIdModal onSaved={() => setClientIdReady(true)} />
       )}
 
       {showNoPathModal && (

@@ -1,10 +1,11 @@
-import { ArrowLeft, Music, Settings } from "lucide-react";
+import { ArrowLeft, HelpCircle, Music, Settings } from "lucide-react";
 
 type AppHeaderProps = {
   canOpenSettings: boolean;
   showBackButton: boolean;
   onBack: () => void;
   onSettingsClick: () => void;
+  onHelpClick: () => void;
 };
 
 export function AppHeader({
@@ -12,6 +13,7 @@ export function AppHeader({
   showBackButton,
   onBack,
   onSettingsClick,
+  onHelpClick,
 }: AppHeaderProps) {
   return (
     <header className="app-header">
@@ -34,16 +36,27 @@ export function AppHeader({
           <span>TuneSaver</span>
         </div>
       </div>
-      <button
-        className="icon-button"
-        type="button"
-        aria-label="Settings"
-        title="Settings"
-        onClick={onSettingsClick}
-        disabled={!canOpenSettings}
-      >
-        <Settings size={20} />
-      </button>
+      <div className="header-right">
+        <button
+          className="icon-button"
+          type="button"
+          aria-label="Help"
+          title="How TuneSaver works"
+          onClick={onHelpClick}
+        >
+          <HelpCircle size={20} />
+        </button>
+        <button
+          className="icon-button"
+          type="button"
+          aria-label="Settings"
+          title="Settings"
+          onClick={onSettingsClick}
+          disabled={!canOpenSettings}
+        >
+          <Settings size={20} />
+        </button>
+      </div>
     </header>
   );
 }

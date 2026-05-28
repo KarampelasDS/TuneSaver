@@ -34,4 +34,12 @@ contextBridge.exposeInMainWorld("electron", {
     beatSaberPath: string;
   }): Promise<{ success: boolean; error?: string }> =>
     ipcRenderer.invoke("create-bplist", args),
+
+  getClientId: (): Promise<{ valid: boolean }> =>
+    ipcRenderer.invoke("get-client-id"),
+
+  saveClientId: (
+    id: string,
+  ): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke("save-client-id", id),
 });
