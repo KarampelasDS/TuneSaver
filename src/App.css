@@ -7,6 +7,8 @@
   --background-secondary: #0b1326;
   --text: #ffffff;
   --text-muted: #d3d3d3;
+  --border: #3b484b;
+  --gradient1: linear-gradient(180deg, #112146 0%, #0c1628 100%);
 }
 
 * {
@@ -24,12 +26,17 @@ body {
   justify-content: center;
 }
 
+* {
+  transition: all 0.35s ease;
+}
+
 /* -----------------Navbar----------------- */
 .navbar {
   background-color: var(--navbar);
   width: 100%;
   display: flex;
   justify-content: space-between;
+  border-bottom: 1px solid var(--border);
 }
 
 .navbar .app-logo {
@@ -57,6 +64,10 @@ body {
   color: var(--text-muted) !important;
 }
 
+.navbar .navbar-links a:hover {
+  color: var(--primary) !important;
+}
+
 .navbar .navbar-icons {
   display: flex;
   gap: 1rem;
@@ -78,4 +89,54 @@ body {
   .navbar .navbar-links {
     display: none;
   }
+}
+
+/* -----------------Hero Section----------------- */
+
+.hero-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 6rem 1rem;
+  gap: 2rem;
+  background: var(--gradient1);
+}
+.hero-section h1 {
+  font-size: 2.5rem;
+  color: var(--text);
+}
+.hero-section .hero-description {
+  font-size: 1.35rem;
+  color: var(--text-muted);
+}
+.hero-section .hero-buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+}
+.hero-section .cta-button {
+  background-color: var(--primary);
+  color: var(--text);
+  padding: 1.7rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 1.25rem;
+}
+.hero-section .cta-button:hover {
+  background-color: var(--primary);
+  opacity: 0.9;
+}
+.hero-section .github-button {
+  text-decoration: none;
+  font-size: 1rem;
+  color: var(--primary);
+  font-size: 1rem;
+  font-weight: bold;
 }
