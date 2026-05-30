@@ -30,7 +30,7 @@
 
 ## Premise
 
-Beat Saber has a thriving custom map community on [BeatSaver](https://beatsaver.com), but finding maps for every song in your Spotify library is tedious — you have to search for each track one by one, evaluate matches, and manually download and extract each ZIP.
+Beat Saber has a thriving custom map community on [BeatSaver](https://beatsaver.com), but finding maps for every song in your Spotify library is tedious, you have to search for each track one by one, evaluate matches, and manually download and extract each ZIP.
 
 TuneSaver automates the entire pipeline. You log in with your Spotify account, select one or more of your playlists (or cherry-pick individual tracks), and TuneSaver searches BeatSaver for the closest matching custom map for every song. It scores each result by comparing the song title and artist name, lets you swap in alternative maps if the top result is wrong, and then batch-downloads everything directly into Beat Saber's `CustomLevels` folder. For full playlists it also writes a `.bplist` playlist file so the collection appears as a named playlist inside the game with the original Spotify cover image.
 
