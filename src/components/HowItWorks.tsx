@@ -24,9 +24,6 @@ export default function HowItWorks() {
     <section className="how-it-works-section" id="how-it-works">
       <div className="section-header">
         <h2>How it works</h2>
-        <p className="section-subtitle">
-          Three steps from Spotify to Beat Saber.
-        </p>
       </div>
       <div className="steps-grid">
         {steps.map((step) => (

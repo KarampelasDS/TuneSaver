@@ -8,8 +8,23 @@ export default function Navbar() {
   return (
     <nav className="navbar">
       <div className="app-logo">
-        <Link to="/" style={{ display: "flex", alignItems: "center", gap: "0.5rem", textDecoration: "none", color: "inherit" }}>
-          <img src="/logo.svg" alt="TuneSaver Logo" className="logo-image" width="40" height="40" />
+        <Link
+          to="/"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            textDecoration: "none",
+            color: "inherit",
+          }}
+        >
+          <img
+            src="/logo.svg"
+            alt="TuneSaver Logo"
+            className="logo-image"
+            width="40"
+            height="40"
+          />
           <span className="app-name">TuneSaver</span>
         </Link>
       </div>
@@ -31,7 +46,12 @@ export default function Navbar() {
         <div className="navbar-mobile-guide">
           <Link to="/install-guide">Install Guide</Link>
         </div>
-        <a href="https://github.com/karampelasDS/tunesaver" target="_blank" rel="noreferrer" aria-label="GitHub">
+        <a
+          href="https://github.com/karampelasDS/tunesaver"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="GitHub"
+        >
           <FaGithub size={26} id="github-icon" />
         </a>
       </div>

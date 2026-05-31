@@ -13,11 +13,7 @@ export default function HeroSection() {
         scores the results, <br /> and downloads maps straight into your
         CustomLevels folder.
       </p>
-      <div className="hero-setup-note">
-        Requires a Spotify Premium account, a free Spotify developer app, and
-        Beat Saber with BSIPA, SongCore, and PlaylistManager installed.{" "}
-        <Link to="/install-guide">Install guide →</Link>
-      </div>
+
       <div className="hero-buttons">
         <a
           href="https://github.com/karampelasDS/tunesaver/releases/latest"
@@ -31,6 +27,19 @@ export default function HeroSection() {
         >
           View source on GitHub <FaExternalLinkAlt size={12} />
         </a>
+      </div>
+      <div className="hero-setup-note">
+        <span>
+          TuneSaver Requires a{" "}
+          <span style={{ fontWeight: "bold" }}>Spotify Premium</span> account, a
+          free Spotify developer
+          <br />
+          app, and Beat Saber with BSIPA, SongCore, and PlaylistManager
+          installed.
+          <br />
+          <br />
+          <Link to="/install-guide">Install guide →</Link>
+        </span>
       </div>
       <div className="hero-image">
         <img

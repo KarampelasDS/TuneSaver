@@ -1,12 +1,11 @@
-import { FaShieldAlt, FaBullseye, FaListAlt, FaCheckCircle } from "react-icons/fa";
+import {
+  FaShieldAlt,
+  FaBullseye,
+  FaListAlt,
+  FaCheckCircle,
+} from "react-icons/fa";
 
 const features = [
-  {
-    icon: <FaShieldAlt size={22} />,
-    title: "PKCE OAuth - no secrets",
-    description:
-      "No client secret, no backend, no stored credentials. The auth flow runs entirely in the app; tokens are held in memory for the session and expire after one hour.",
-  },
   {
     icon: <FaBullseye size={22} />,
     title: "Smart map matching",
@@ -25,6 +24,12 @@ const features = [
     description:
       "Before downloading, TuneSaver scans your CustomLevels folder and marks maps you already have. They're skipped automatically - no duplicates, no re-downloads.",
   },
+  {
+    icon: <FaShieldAlt size={22} />,
+    title: "PKCE OAuth - no secrets",
+    description:
+      "No client secret, no backend, no stored credentials. The auth flow runs entirely in the app; tokens are held in memory for the session and expire after one hour.",
+  },
 ];
 
 export default function Features() {
@@ -32,9 +37,6 @@ export default function Features() {
     <section className="features-section" id="features">
       <div className="section-header">
         <h2>Core features</h2>
-        <p className="section-subtitle">
-          Everything you need, nothing you don't.
-        </p>
       </div>
       <div className="features-grid">
         {features.map((f) => (
