@@ -1,10 +1,3 @@
-import {
-  FaPuzzlePiece,
-  FaKey,
-  FaUserPlus,
-  FaCog,
-  FaPlay,
-} from "react-icons/fa";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
@@ -196,9 +189,6 @@ export default function InstallGuide() {
               <div className="install-step-right">
                 <div className="install-step-header">
                   <div className="install-step-title-group">
-                    <span className="install-step-category">
-                      {step.icon} {step.category}
-                    </span>
                     <span className="install-step-title">{step.title}</span>
                   </div>
                 </div>
