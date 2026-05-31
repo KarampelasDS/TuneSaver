@@ -614,9 +614,8 @@ button {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background-color: color-mix(in srgb, var(--primary) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
-  color: var(--primary);
+  background-color: color-mix(in srgb, var(--primary) 20%, transparent);
+  color: var(--text);
   font-size: 1rem;
   font-weight: 700;
   display: flex;
@@ -649,6 +648,8 @@ button {
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--text);
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .install-step-body {

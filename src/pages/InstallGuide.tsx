@@ -11,8 +11,6 @@ import Footer from "../components/Footer";
 const steps = [
   {
     number: 1,
-    icon: <FaPuzzlePiece size={18} />,
-    category: "Prerequisite",
     title: "Install the required Beat Saber mods",
     content: (
       <>
@@ -55,8 +53,6 @@ const steps = [
   },
   {
     number: 2,
-    icon: <FaKey size={18} />,
-    category: "Authorization",
     title: "Create a Spotify app",
     content: (
       <>
@@ -100,8 +96,6 @@ const steps = [
   },
   {
     number: 3,
-    icon: <FaUserPlus size={18} />,
-    category: "Authorization",
     title: "Whitelist users (including yourself)",
     content: (
       <>
@@ -132,8 +126,6 @@ const steps = [
   },
   {
     number: 4,
-    icon: <FaCog size={18} />,
-    category: "Configuration",
     title: "Configure the app",
     content: (
       <>
@@ -162,8 +154,6 @@ const steps = [
   },
   {
     number: 5,
-    icon: <FaPlay size={18} />,
-    category: "Launch",
     title: "Run TuneSaver",
     content: (
       <>
