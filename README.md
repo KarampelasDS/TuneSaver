@@ -9,6 +9,10 @@
 </p>
 
 <p align="center">
+  <a href="https://tunesaver.vercel.app/"><img alt="Website" src="https://img.shields.io/badge/Website-tunesaver.vercel.app-22d3ee?style=for-the-badge&logo=vercel&logoColor=white" /></a>
+</p>
+
+<p align="center">
   <img alt="Electron" src="https://img.shields.io/badge/Electron-42-47848F?style=for-the-badge&logo=electron&logoColor=white" />
   <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=111827" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
@@ -30,7 +34,7 @@
 
 ## Premise
 
-Beat Saber has a thriving custom map community on [BeatSaver](https://beatsaver.com), but finding maps for every song in your Spotify library is tedious, you have to search for each track one by one, evaluate matches, and manually download and extract each ZIP.
+Beat Saber has a thriving custom map community on [BeatSaver](https://beatsaver.com), but finding maps for every song in your Spotify library is tedious — you have to search for each track one by one, evaluate matches, and manually download and extract each ZIP.
 
 TuneSaver automates the entire pipeline. You log in with your Spotify account, select one or more of your playlists (or cherry-pick individual tracks), and TuneSaver searches BeatSaver for the closest matching custom map for every song. It scores each result by comparing the song title and artist name, lets you swap in alternative maps if the top result is wrong, and then batch-downloads everything directly into Beat Saber's `CustomLevels` folder. For full playlists it also writes a `.bplist` playlist file so the collection appears as a named playlist inside the game with the original Spotify cover image.
 
