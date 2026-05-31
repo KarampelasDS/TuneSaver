@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
@@ -45,6 +46,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/install-guide" element={<InstallGuide />} />
       </Routes>
+      <Analytics />
     </BrowserRouter>
   );
 }
